@@ -78,6 +78,8 @@ status-website:
   # If it is ever added, uncomment cname, comment out baseUrl (configuration.md "Custom domain": baseUrl is for the default github.io path), and keep printing the github.io link as the fallback.
   cname: status.bugroo.dev
   name: Bugroo status
+  logoUrl: https://status.bugroo.dev/assets/bugroo-icon.svg
+  faviconUrl: https://status.bugroo.dev/assets/bugroo-icon.svg
   introTitle: "**Is Bugroo working?** This page shows whether the Bugroo website and the Bugroo service are up right now."
   introMessage: "The checks run every 5 minutes from outside our own servers. If something is down, an incident appears here with the time it started and the time it was fixed. For questions write to us from the contact page on [bugroo.dev](https://bugroo.dev)."
   navbar:
