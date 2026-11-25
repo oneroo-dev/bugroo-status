@@ -1,31 +1,94 @@
-# Change these first
-owner: upptime # Your GitHub organization or username, where this repository lives
-repo: upptime # The name of this repository
+# Upptime configuration for the public repo oneroo-dev/bugroo-status (O2 status page, O3 HTTP uptime).
+# Copy this file to the root of that repo as .upptimerc.yml. Nothing here is a secret. Decisions: docs/ops/ops-watch/provider-research.md section 2 and 5; runbook: docs/ops/status-and-monitors.md.
+#
+# Option names used below were read on 2026-11-22 from these raw files, and only these are used:
+#   https://raw.githubusercontent.com/upptime/upptime/master/.upptimerc.yml (owner, repo, sites, status-website: cname, baseUrl, logoUrl, name, introTitle, introMessage, navbar)
+#   https://raw.githubusercontent.com/upptime/upptime.js.org/master/docs/configuration.md (user-agent, assignees, sites: name, url, method, slug, expectedStatusCodes, maxResponseTime,
+#     __dangerous__body_down_if_text_missing, secrets, skipDeleteIssues, workflowSchedule, status-website: publish, i18n)
+#   https://raw.githubusercontent.com/upptime/upptime.js.org/master/docs/notifications.md (NOTIFICATION_TELEGRAM, _BOT_KEY, _CHAT_ID as repo secrets, see the bottom of this file)
+#   https://raw.githubusercontent.com/upptime/status-page/master/i18n.yml (the `footer` key: "This page is [open source]($REPO), powered by [Upptime](https://upptime.js.org)")
+# The footer text itself is ours; the key and its $REPO placeholder come from i18n.yml above.
+
+owner: oneroo-dev # GitHub organisation that holds the status repo
+repo: bugroo-status # the repo made from the upptime/upptime template
+user-agent: oneroo-dev # GitHub API calls need a User-Agent (configuration.md)
+
+# Every downtime issue is assigned to Raja, so GitHub emails him and GitHub Mobile pushes to his phone.
+# Replace the placeholder with his real GitHub login before the first run. Do not guess it.
+assignees:
+  - iamroi
+
+# Strict allowlist: no secrets are used by the checks (every URL below is public), and the generated workflows pass GH_PAT on their own.
+# If an optional notification channel is switched on (bottom of this file), the notification secrets are handled by Upptime itself; keep this list empty unless a site URL ever uses a $SECRET.
+secrets: []
+
+# Keep short incidents in the history: a two minute outage is exactly what customers ask about (configuration.md "Skip delete issues": issues open under 15 minutes are deleted otherwise).
+skipDeleteIssues: true
+
+# Left at the Upptime default on purpose (every 5 minutes is GitHub's floor for scheduled workflows). Uncomment only to change it.
+# workflowSchedule:
+#   uptime: "*/5 * * * *"
 
 sites:
-  - name: Google
-    url: https://www.google.com
-  - name: Wikipedia
-    url: https://en.wikipedia.org
-  - name: Hacker News
-    url: https://news.ycombinator.com
-  - name: Secret Site
-    url: $SECRET_SITE
+  # Production. The app lives on bugroo.dev under paths (never app.bugroo.dev).
+  - name: Bugroo website
+    slug: bugroo-website
+    url: https://bugroo.dev/
+    maxResponseTime: 5000
+
+  # Worker liveness. src/runtime/core-register.ts answers GET /health with the text "ok".
+  - name: Bugroo API liveness
+    slug: bugroo-api-health
+    url: https://bugroo.dev/health
+    expectedStatusCodes:
+      - 200
+    __dangerous__body_down_if_text_missing: "ok"
+    maxResponseTime: 3000
+
+  # Admin lane liveness. src/lanes/platform/admin/routes.ts answers GET /_health with "ok" and no-store.
+  # Never add ?full here: it needs the operator token and must not be monitored from outside.
+  - name: Bugroo platform health
+    slug: bugroo-platform-health
+    url: https://bugroo.dev/_health
+    expectedStatusCodes:
+      - 200
+    __dangerous__body_down_if_text_missing: "ok"
+    maxResponseTime: 3000
+
+  # Skipped on purpose:
+  # - Sign-in page. The Worker redirects to /auth/sign-in (src/lanes/platform/social/handlers.ts, sso/signin.ts) but this branch has no handler that serves that page
+  #   to a plain GET, so its status code is not known. Add it after the first production deploy once `curl -sI https://bugroo.dev/auth/sign-in` is read by hand.
+  # - Ingest endpoint. Ingest takes POSTed envelopes with a project key; there is no cheap unauthenticated GET, and a POST probe would write an event on every check.
+
+# STAGING (staging.bugroo.dev, B4). Keep commented until the staging deploy exists, then uncomment. A staging failure still opens an issue, so assign it only if Raja wants staging pages.
+#  - name: Staging health
+#    slug: staging-health
+#    url: https://staging.bugroo.dev/health
+#    expectedStatusCodes:
+#      - 200
+#    __dangerous__body_down_if_text_missing: "ok"
+#
+# FAIL DRILL (runbook, "Post-setup checks"): temporarily replace the url above with a path that returns 404, for example https://staging.bugroo.dev/health-drill-404,
+# commit, wait for the next 5 minute run, see the issue and the push, then revert. The default expectedStatusCodes (20x and 30x) treat 404 as down.
 
 status-website:
-  # Add your custom domain name, or remove the `cname` line if you don't have a domain
-  # Uncomment the `baseUrl` line if you don't have a custom domain and add your repo name there
-  cname: demo.upptime.js.org
-  # baseUrl: /your-repo-name
-  logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
-  name: Upptime
-  introTitle: "**Upptime** is the open-source uptime monitor and status page, powered entirely by GitHub."
-  introMessage: This is a sample status page which uses **real-time** data from our [GitHub repository](https://github.com/upptime/upptime). No server required — just GitHub Actions, Issues, and Pages. [**Get your own for free**](https://github.com/upptime/upptime)
+  # Canonical link: https://oneroo-dev.github.io/bugroo-status/ (GitHub Pages, outside Cloudflare's failure domain).
+  baseUrl: /bugroo-status
+  # Optional, later, as a convenience only: a status.bugroo.dev CNAME rides on Cloudflare DNS, Bugroo's own failure domain, so it can fail together with the app.
+  # If it is ever added, uncomment cname, comment out baseUrl (configuration.md "Custom domain": baseUrl is for the default github.io path), and keep printing the github.io link as the fallback.
+  # cname: status.bugroo.dev
+  name: Bugroo status
+  introTitle: "**Is Bugroo working?** This page shows whether the Bugroo website and the Bugroo service are up right now."
+  introMessage: "The checks run every 5 minutes from outside our own servers. If something is down, an incident appears here with the time it started and the time it was fixed. For questions write to us from the contact page on [bugroo.dev](https://bugroo.dev)."
   navbar:
     - title: Status
       href: /
-    - title: GitHub
-      href: https://github.com/$OWNER/$REPO
+    - title: Bugroo
+      href: https://bugroo.dev
 
-# Upptime also supports notifications, assigning issues, and more
-# See https://upptime.js.org/docs/configuration
+i18n:
+  footer: "This page is [open source]($REPO), powered by [Upptime](https://upptime.js.org). Fallback address if bugroo.dev is unreachable: https://oneroo-dev.github.io/bugroo-status/"
+
+# OPTIONAL second channel (O3). GitHub issue assignment is the primary alert. A louder channel is added only with repository secrets, never in this file (notifications.md):
+#   Telegram: NOTIFICATION_TELEGRAM=true, NOTIFICATION_TELEGRAM_BOT_KEY=<bot key from BotFather>, NOTIFICATION_TELEGRAM_CHAT_ID=<chat id>
+#   Email:    NOTIFICATION_EMAIL=true, NOTIFICATION_EMAIL_FROM, NOTIFICATION_EMAIL_TO, plus one provider block (SMTP, SES, Sendgrid, Sparkpost or Mailgun), see notifications.md
